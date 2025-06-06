@@ -1,0 +1,16 @@
+# Ignore dataset
+machine.data
+Index
+machine.names
+# Ignore model output and logs
+metrics.csv
+*.log
+
+# Ignore compiled files
+*.o
+*.out
+*.exe
+
+# Ignore Python cache and virtual environment
+__pycache__/
+env/
