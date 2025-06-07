@@ -1,127 +1,76 @@
-#include <iostream>
+#include "LinearSystem.h"
+#include <cassert>
 #include <cmath>
 
-#include "Matrix.cpp"
+LinearSystem::LinearSystem(const Matrix& A, const Vector& b) {
+    assert(A.numRows() == A.numCols() && A.numRows() == b.size());
+    mSize = A.numRows();
+    mpA = new Matrix(A);
+    mpb = new Vector(b);
+}
 
-class LinearSystem {
-protected:
-    int     mSize;   // dimension if A is square; otherwise 0
-    Matrix *mpA;     // pointer to coefficient matrix
-    Vector *mpb;     // pointer to right-hand side vector
+LinearSystem::~LinearSystem() {
+    delete mpA;
+    delete mpb;
+}
 
-public:
-    // Delete default and copy constructors
-    LinearSystem() = delete;
-    LinearSystem(const LinearSystem &other) = delete;
+Vector LinearSystem::Solve() {
+    Matrix A = *mpA;
+    Vector b = *mpb;
+    int n = mSize;
 
-    // Constructor: copy A and b
-    LinearSystem(const Matrix &A, const Vector &b)
-        : mpA(nullptr), mpb(nullptr), mSize(0)
-    {
-        int rows = A.numRows();
-        int cols = A.numCols();
-        if(b.size() != rows) {
-            std::cerr << "Dimension mismatch in LinearSystem constructor.\n";
-            std::exit(EXIT_FAILURE);
+    for (int i = 0; i < n; ++i) {
+        // Pivot
+        int maxRow = i;
+        for (int k = i + 1; k < n; ++k) {
+            if (fabs(A(k + 1, i + 1)) > fabs(A(maxRow + 1, i + 1)))
+                maxRow = k;
         }
-        mpA = new Matrix(A);
-        mpb = new Vector(b);
-        if(rows == cols) {
-            mSize = rows;
-        } else {
-            mSize = 0;
+        for (int j = 0; j < n; ++j)
+            std::swap(A(i + 1, j + 1), A(maxRow + 1, j + 1));
+        std::swap(b[i], b[maxRow]);
+
+        // Eliminate
+        for (int k = i + 1; k < n; ++k) {
+            double factor = A(k + 1, i + 1) / A(i + 1, i + 1);
+            for (int j = i; j < n; ++j)
+                A(k + 1, j + 1) -= factor * A(i + 1, j + 1);
+            b[k] -= factor * b[i];
         }
     }
 
-    // Destructor
-    virtual ~LinearSystem()
-    {
-        delete mpA;
-        delete mpb;
+    // Back substitution
+    Vector x(n);
+    for (int i = n - 1; i >= 0; --i) {
+        x[i] = b[i];
+        for (int j = i + 1; j < n; ++j)
+            x[i] -= A(i + 1, j + 1) * x[j];
+        x[i] /= A(i + 1, i + 1);
     }
+    return x;
+}
 
-    // Solve Ax = b by Gaussian elimination (square only)
-    virtual Vector Solve() const
-    {
-        if(mSize <= 0) {
-            std::cerr << "Solve() requires a square system.\n";
-            std::exit(EXIT_FAILURE);
-        }
-        int n = mSize;
-        Matrix aug(n, n + 1);
-        for(int i = 1; i <= n; ++i) {
-            for(int j = 1; j <= n; ++j) {
-                aug(i, j) = (*mpA)(i, j);
-            }
-            aug(i, n + 1) = (*mpb)(i);
-        }
-        // Forward elimination with partial pivoting
-        for(int i = 1; i <= n; ++i) {
-            int pivot = i;
-            double maxAbs = std::fabs(aug(i, i));
-            for(int row = i + 1; row <= n; ++row) {
-                double val = std::fabs(aug(row, i));
-                if(val > maxAbs) {
-                    maxAbs = val;
-                    pivot = row;
-                }
-            }
-            if(std::fabs(aug(pivot, i)) < 1e-12) {
-                std::cerr << "Matrix is singular or nearly singular.\n";
-                std::exit(EXIT_FAILURE);
-            }
-            if(pivot != i) {
-                for(int col = i; col <= n + 1; ++col) {
-                    std::swap(aug(i, col), aug(pivot, col));
-                }
-            }
-            for(int row = i + 1; row <= n; ++row) {
-                double factor = aug(row, i) / aug(i, i);
-                for(int col = i; col <= n + 1; ++col) {
-                    aug(row, col) -= factor * aug(i, col);
-                }
-            }
-        }
-        // Back substitution
-        Vector x(n);
-        for(int i = n; i >= 1; --i) {
-            double sum = aug(i, n + 1);
-            for(int j = i + 1; j <= n; ++j) {
-                sum -= aug(i, j) * x(j);
-            }
-            x(i) = sum / aug(i, i);
-        }
-        return x;
-    }
+PosSymLinSystem::PosSymLinSystem(const Matrix& A, const Vector& b) : LinearSystem(A, b) {
+    assert(A.numRows() == A.numCols());
+    for (int i = 1; i <= A.numRows(); ++i)
+        for (int j = 1; j <= A.numCols(); ++j)
+            assert(fabs(A(i, j) - A(j, i)) < 1e-9); // check symmetry
+}
 
-    // Solve least squares x = A^+ b
-    Vector SolveLeastSquares() const
-    {
-        Matrix Aplus = mpA->pseudoInverse();       // size n×m if A is m×n
-        Vector x = Aplus * (*mpb);
-        return x;
-    }
+Vector PosSymLinSystem::Solve() {
+    int n = mSize;
+    Vector x(n), r = *mpb - (*mpA) * x;
+    Vector p = r;
 
-    // Solve (A^T A + λI)x = A^T b
-    Vector SolveRegularized(double lambda) const
-    {
-        int m = mpA->numRows();
-        int n = mpA->numCols();
-        Matrix At = mpA->transpose();              // n×m
-        Matrix AtA = At * (*mpA);                  // n×n
-        for(int i = 1; i <= n; ++i) {
-            AtA(i, i) += lambda;
-        }
-        Vector Atb(n);
-        for(int i = 1; i <= n; ++i) {
-            double sum = 0.0;
-            for(int j = 1; j <= m; ++j) {
-                sum += At(i, j) * (*mpb)(j);
-            }
-            Atb(i) = sum;
-        }
-        LinearSystem normalSys(AtA, Atb);
-        Vector x = normalSys.Solve();
-        return x;
+    for (int k = 0; k < n; ++k) {
+        Vector Ap = (*mpA) * p;
+        double alpha = (r * r) / (p * Ap);
+        x = x + p * alpha;
+        Vector r_new = r - Ap * alpha;
+        if ((r_new * r_new) < 1e-10) break;
+        double beta = (r_new * r_new) / (r * r);
+        p = r_new + p * beta;
+        r = r_new;
     }
-};
+    return x;
+}

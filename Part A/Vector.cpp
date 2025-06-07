@@ -1,127 +1,76 @@
-#pragma once
+#include "Vector.h"
 #include <iostream>
+using namespace std;
 
-class Vector {
-private:
-    int    mSize;   // number of elements
-    double *mData;  // pointer to dynamically allocated array
+Vector::Vector(int size) : mSize(size) {
+    mData = new double[mSize];
+    for (int i = 0; i < mSize; ++i)
+        mData[i] = 0.0;
+}
 
-public:
-    // Constructor: allocate array of given size and initialize to zero
-    Vector(int size)
-        : mSize(size), mData(nullptr)
-    {
-        if (size <= 0) {
-            std::cerr << "Vector size must be positive.\n";
-            std::exit(EXIT_FAILURE);
-        }
-        mData = new double[mSize];
-        for(int i = 0; i < mSize; ++i) {
-            mData[i] = 0.0;
-        }
-    }
+Vector::Vector(const Vector& other) : mSize(other.mSize) {
+    mData = new double[mSize];
+    for (int i = 0; i < mSize; ++i)
+        mData[i] = other.mData[i];
+}
 
-    // Copy constructor: deep copy
-    Vector(const Vector &other)
-        : mSize(other.mSize), mData(nullptr)
-    {
-        mData = new double[mSize];
-        for(int i = 0; i < mSize; ++i) {
-            mData[i] = other.mData[i];
-        }
-    }
+Vector::~Vector() {
+    delete[] mData;
+}
 
-    // Destructor: free memory
-    ~Vector()
-    {
+Vector& Vector::operator=(const Vector& other) {
+    if (this != &other) {
         delete[] mData;
-    }
-
-    // Assignment operator: deep copy
-    Vector& operator=(const Vector &other)
-    {
-        if(this == &other) return *this;
-        if(mSize != other.mSize) {
-            delete[] mData;
-            mSize = other.mSize;
-            mData = new double[mSize];
-        }
-        for(int i = 0; i < mSize; ++i) {
+        mSize = other.mSize;
+        mData = new double[mSize];
+        for (int i = 0; i < mSize; ++i)
             mData[i] = other.mData[i];
-        }
-        return *this;
     }
+    return *this;
+}
 
-    // Return number of elements
-    int size() const
-    {
-        return mSize;
-    }
+Vector Vector::operator+(const Vector& other) const {
+    Vector result(mSize);
+    for (int i = 0; i < mSize; ++i)
+        result.mData[i] = mData[i] + other.mData[i];
+    return result;
+}
 
-    // Zero‐based indexing (no bound checks)
-    double& operator[](int index)
-    {
-        return mData[index];
-    }
-    const double& operator[](int index) const
-    {
-        return mData[index];
-    }
+Vector Vector::operator-(const Vector& other) const {
+    Vector result(mSize);
+    for (int i = 0; i < mSize; ++i)
+        result.mData[i] = mData[i] - other.mData[i];
+    return result;
+}
 
-    // One‐based indexing (no bound checks)
-    double& operator()(int i)
-    {
-        return mData[i - 1];
-    }
-    const double& operator()(int i) const
-    {
-        return mData[i - 1];
-    }
+Vector Vector::operator*(double scalar) const {
+    Vector result(mSize);
+    for (int i = 0; i < mSize; ++i)
+        result.mData[i] = mData[i] * scalar;
+    return result;
+}
 
-    // Vector addition
-    Vector operator+(const Vector &other) const
-    {
-        // Dimensions should match; omitted check
-        Vector result(mSize);
-        for(int i = 0; i < mSize; ++i) {
-            result.mData[i] = mData[i] + other.mData[i];
-        }
-        return result;
-    }
+double Vector::operator*(const Vector& other) const {
+    double dot = 0.0;
+    for (int i = 0; i < mSize; ++i)
+        dot += mData[i] * other.mData[i];
+    return dot;
+}
 
-    // Vector subtraction
-    Vector operator-(const Vector &other) const
-    {
-        Vector result(mSize);
-        for(int i = 0; i < mSize; ++i) {
-            result.mData[i] = mData[i] - other.mData[i];
-        }
-        return result;
-    }
+double& Vector::operator[](int index) {
+    return mData[index]; // 0-based index
+}
 
-    // Scalar multiplication (vector * scalar)
-    Vector operator*(double scalar) const
-    {
-        Vector result(mSize);
-        for(int i = 0; i < mSize; ++i) {
-            result.mData[i] = mData[i] * scalar;
-        }
-        return result;
-    }
+double Vector::operator()(int index) const {
+    return mData[index - 1]; // 1-based index
+}
 
-    // Dot product
-    double dot(const Vector &other) const
-    {
-        double sum = 0.0;
-        for(int i = 0; i < mSize; ++i) {
-            sum += mData[i] * other.mData[i];
-        }
-        return sum;
-    }
+int Vector::size() const {
+    return mSize;
+}
 
-    // Friend: scalar * vector
-    friend Vector operator*(double scalar, const Vector &vec)
-    {
-        return vec * scalar;
-    }
-};
+void Vector::print() const {
+    for (int i = 0; i < mSize; ++i)
+        cout << mData[i] << " ";
+    cout << endl;
+}

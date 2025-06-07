@@ -1,77 +1,42 @@
 #include <iostream>
+#include "Vector.h"
+#include "Matrix.h"
+#include "LinearSystem.h"
 
-#include "Vector.cpp"
-#include "Matrix.cpp"
-#include "LinearSystem.cpp"
-#include "PosSymLinSystem.cpp"
+using namespace std;
 
-int main()
-{
-    // Example 1: Solve a simple 3×3 system by Gaussian elimination
-    {
-        int n = 3;
-        Matrix A(n, n);
-        A(1,1) = 4;  A(1,2) = 1;  A(1,3) = 2;
-        A(2,1) = 1;  A(2,2) = 5;  A(2,3) = 3;
-        A(3,1) = 2;  A(3,2) = 3;  A(3,3) = 10;
+int main() {
+    // Test 1: Solve Ax = b using Gaussian Elimination
+    cout << "=== LinearSystem: Gaussian Elimination ===" << endl;
+    Matrix A(3, 3);
+    A(1,1) = 2; A(1,2) = -1; A(1,3) = 0;
+    A(2,1) = -1; A(2,2) = 2; A(2,3) = -1;
+    A(3,1) = 0; A(3,2) = -1; A(3,3) = 2;
 
-        Vector b(n);
-        b(1) = 7;  b(2) = 12;  b(3) = 20;
+    Vector b(3);
+    b[0] = 1; b[1] = 0; b[2] = 1;
 
-        LinearSystem sys(A, b);
-        Vector x = sys.Solve();
-        std::cout << "Solution of A x = b via Gaussian elimination:\n";
-        for(int i = 1; i <= n; ++i) {
-            std::cout << "  x[" << i << "] = " << x(i) << "\n";
-        }
-        std::cout << std::endl;
-    }
+    LinearSystem sys(A, b);
+    Vector x = sys.Solve();
 
-    // Example 2: Solve same SPD system via Conjugate Gradient
-    {
-        int n = 3;
-        Matrix A(n, n);
-        A(1,1) = 4;  A(1,2) = 1;  A(1,3) = 2;
-        A(2,1) = 1;  A(2,2) = 5;  A(2,3) = 3;
-        A(3,1) = 2;  A(3,2) = 3;  A(3,3) = 10;
+    cout << "Solution x:" << endl;
+    x.print();
 
-        Vector b(n);
-        b(1) = 7;  b(2) = 12;  b(3) = 20;
+    // Test 2: Solve symmetric system using Conjugate Gradient
+    cout << "\n=== PosSymLinSystem: Conjugate Gradient ===" << endl;
+    Matrix S(3, 3);
+    S(1,1) = 4; S(1,2) = 1; S(1,3) = 1;
+    S(2,1) = 1; S(2,2) = 3; S(2,3) = 0;
+    S(3,1) = 1; S(3,2) = 0; S(3,3) = 2;
 
-        PosSymLinSystem cgSys(A, b);
-        Vector xCG = cgSys.Solve();
-        std::cout << "Solution of SPD system via Conjugate Gradient:\n";
-        for(int i = 1; i <= n; ++i) {
-            std::cout << "  x_CG[" << i << "] = " << xCG(i) << "\n";
-        }
-        std::cout << std::endl;
-    }
+    Vector b2(3);
+    b2[0] = 1; b2[1] = 2; b2[2] = 3;
 
-    // Example 3: Under‐determined: m = 2, n = 3, A x = b (least‐squares)
-    {
-        Matrix A(2, 3);
-        A(1,1) = 1;  A(1,2) = 2;  A(1,3) = 3;
-        A(2,1) = 4;  A(2,2) = 5;  A(2,3) = 6;
+    PosSymLinSystem psys(S, b2);
+    Vector x2 = psys.Solve();
 
-        Vector b(2);
-        b(1) = 14;  b(2) = 32;
-
-        LinearSystem ls(A, b);
-        Vector xLS = ls.SolveLeastSquares();
-        std::cout << "Least‐squares solution x = A^+ b (A is 2×3):\n";
-        for(int i = 1; i <= 3; ++i) {
-            std::cout << "  x_LS[" << i << "] = " << xLS(i) << "\n";
-        }
-        std::cout << std::endl;
-
-        double lambda = 0.1;
-        Vector xTik = ls.SolveRegularized(lambda);
-        std::cout << "Tikhonov‐regularized solution (λ = " << lambda << "):\n";
-        for(int i = 1; i <= 3; ++i) {
-            std::cout << "  x_Tik[" << i << "] = " << xTik(i) << "\n";
-        }
-        std::cout << std::endl;
-    }
+    cout << "Solution x:" << endl;
+    x2.print();
 
     return 0;
 }

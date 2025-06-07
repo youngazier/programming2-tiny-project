@@ -1,300 +1,169 @@
-#pragma once
+#include "Matrix.h"
 #include <iostream>
-#include <cmath>    // for fabs
+#include <cassert>
+#include <cmath>
 
-#include "Vector.cpp"
+using namespace std;
 
-class Matrix {
-private:
-    int     mNumRows;  // number of rows
-    int     mNumCols;  // number of columns
-    double **mData;    // pointer-to-pointer: mData[i] is row i
-
-public:
-    // Constructor: allocate mNumRows × mNumCols, initialize all entries to zero
-    Matrix(int numRows, int numCols)
-        : mNumRows(numRows), mNumCols(numCols), mData(nullptr)
-    {
-        if(numRows <= 0 || numCols <= 0) {
-            std::cerr << "Matrix dimensions must be positive.\n";
-            std::exit(EXIT_FAILURE);
-        }
-        mData = new double*[mNumRows];
-        for(int i = 0; i < mNumRows; ++i) {
-            mData[i] = new double[mNumCols];
-        }
-        // Initialize to zero
-        for(int i = 0; i < mNumRows; ++i) {
-            for(int j = 0; j < mNumCols; ++j) {
-                mData[i][j] = 0.0;
-            }
-        }
+Matrix::Matrix(int rows, int cols) : mNumRows(rows), mNumCols(cols) {
+    mData = new double*[mNumRows];
+    for (int i = 0; i < mNumRows; ++i) {
+        mData[i] = new double[mNumCols];
+        for (int j = 0; j < mNumCols; ++j)
+            mData[i][j] = 0.0;
     }
+}
 
-    // Copy constructor: deep copy
-    Matrix(const Matrix &other)
-        : mNumRows(other.mNumRows),
-          mNumCols(other.mNumCols),
-          mData(nullptr)
-    {
-        mData = new double*[mNumRows];
-        for(int i = 0; i < mNumRows; ++i) {
-            mData[i] = new double[mNumCols];
-            for(int j = 0; j < mNumCols; ++j) {
-                mData[i][j] = other.mData[i][j];
-            }
-        }
+Matrix::Matrix(const Matrix& other) : mNumRows(other.mNumRows), mNumCols(other.mNumCols) {
+    mData = new double*[mNumRows];
+    for (int i = 0; i < mNumRows; ++i) {
+        mData[i] = new double[mNumCols];
+        for (int j = 0; j < mNumCols; ++j)
+            mData[i][j] = other.mData[i][j];
     }
+}
 
-    // Destructor: free memory
-    ~Matrix()
-    {
-        for(int i = 0; i < mNumRows; ++i) {
+Matrix::~Matrix() {
+    for (int i = 0; i < mNumRows; ++i)
+        delete[] mData[i];
+    delete[] mData;
+}
+
+Matrix& Matrix::operator=(const Matrix& other) {
+    if (this != &other) {
+        for (int i = 0; i < mNumRows; ++i)
             delete[] mData[i];
-        }
         delete[] mData;
-    }
 
-    // Assignment operator: deep copy
-    Matrix& operator=(const Matrix &other)
-    {
-        if(this == &other) return *this;
-        if(mNumRows != other.mNumRows || mNumCols != other.mNumCols) {
-            for(int i = 0; i < mNumRows; ++i) {
-                delete[] mData[i];
-            }
-            delete[] mData;
-            mNumRows = other.mNumRows;
-            mNumCols = other.mNumCols;
-            mData = new double*[mNumRows];
-            for(int i = 0; i < mNumRows; ++i) {
-                mData[i] = new double[mNumCols];
-            }
-        }
-        for(int i = 0; i < mNumRows; ++i) {
-            for(int j = 0; j < mNumCols; ++j) {
+        mNumRows = other.mNumRows;
+        mNumCols = other.mNumCols;
+        mData = new double*[mNumRows];
+        for (int i = 0; i < mNumRows; ++i) {
+            mData[i] = new double[mNumCols];
+            for (int j = 0; j < mNumCols; ++j)
                 mData[i][j] = other.mData[i][j];
-            }
         }
-        return *this;
     }
+    return *this;
+}
 
-    // Accessors
-    int numRows() const { return mNumRows; }
-    int numCols() const { return mNumCols; }
+Matrix Matrix::operator+(const Matrix& other) const {
+    assert(mNumRows == other.mNumRows && mNumCols == other.mNumCols);
+    Matrix result(mNumRows, mNumCols);
+    for (int i = 0; i < mNumRows; ++i)
+        for (int j = 0; j < mNumCols; ++j)
+            result.mData[i][j] = mData[i][j] + other.mData[i][j];
+    return result;
+}
 
-    // One‐based indexing (no bound checks)
-    double& operator()(int i, int j)
-    {
-        return mData[i - 1][j - 1];
-    }
-    const double& operator()(int i, int j) const
-    {
-        return mData[i - 1][j - 1];
-    }
+Matrix Matrix::operator-(const Matrix& other) const {
+    assert(mNumRows == other.mNumRows && mNumCols == other.mNumCols);
+    Matrix result(mNumRows, mNumCols);
+    for (int i = 0; i < mNumRows; ++i)
+        for (int j = 0; j < mNumCols; ++j)
+            result.mData[i][j] = mData[i][j] - other.mData[i][j];
+    return result;
+}
 
-    // Matrix addition
-    Matrix operator+(const Matrix &other) const
-    {
-        Matrix result(mNumRows, mNumCols);
-        for(int i = 0; i < mNumRows; ++i) {
-            for(int j = 0; j < mNumCols; ++j) {
-                result.mData[i][j] = mData[i][j] + other.mData[i][j];
-            }
-        }
-        return result;
-    }
+Matrix Matrix::operator*(const Matrix& other) const {
+    assert(mNumCols == other.mNumRows);
+    Matrix result(mNumRows, other.mNumCols);
+    for (int i = 0; i < mNumRows; ++i)
+        for (int j = 0; j < other.mNumCols; ++j)
+            for (int k = 0; k < mNumCols; ++k)
+                result.mData[i][j] += mData[i][k] * other.mData[k][j];
+    return result;
+}
 
-    // Matrix subtraction
-    Matrix operator-(const Matrix &other) const
-    {
-        Matrix result(mNumRows, mNumCols);
-        for(int i = 0; i < mNumRows; ++i) {
-            for(int j = 0; j < mNumCols; ++j) {
-                result.mData[i][j] = mData[i][j] - other.mData[i][j];
-            }
-        }
-        return result;
-    }
+Vector Matrix::operator*(const Vector& vec) const {
+    assert(mNumCols == vec.size());
+    Vector result(mNumRows);
+    for (int i = 0; i < mNumRows; ++i)
+        for (int j = 0; j < mNumCols; ++j)
+            result[i] += mData[i][j] * vec(j + 1);
+    return result;
+}
 
-    // Matrix × Matrix multiplication
-    Matrix operator*(const Matrix &other) const
-    {
-        // No dimension check; assumes mNumCols == other.mNumRows
-        Matrix result(mNumRows, other.mNumCols);
-        for(int i = 0; i < mNumRows; ++i) {
-            for(int j = 0; j < other.mNumCols; ++j) {
-                double sum = 0.0;
-                for(int k = 0; k < mNumCols; ++k) {
-                    sum += mData[i][k] * other.mData[k][j];
-                }
-                result.mData[i][j] = sum;
-            }
-        }
-        return result;
-    }
+Matrix Matrix::operator*(double scalar) const {
+    Matrix result(mNumRows, mNumCols);
+    for (int i = 0; i < mNumRows; ++i)
+        for (int j = 0; j < mNumCols; ++j)
+            result.mData[i][j] = mData[i][j] * scalar;
+    return result;
+}
 
-    // Scalar multiplication (matrix * scalar)
-    Matrix operator*(double scalar) const
-    {
-        Matrix result(mNumRows, mNumCols);
-        for(int i = 0; i < mNumRows; ++i) {
-            for(int j = 0; j < mNumCols; ++j) {
-                result.mData[i][j] = mData[i][j] * scalar;
-            }
-        }
-        return result;
-    }
+double& Matrix::operator()(int i, int j) {
+    return mData[i - 1][j - 1];
+}
 
-    // Friend: scalar × matrix
-    friend Matrix operator*(double scalar, const Matrix &mat)
-    {
-        return mat * scalar;
-    }
+double Matrix::operator()(int i, int j) const {
+    return mData[i - 1][j - 1];
+}
 
-    // Matrix × Vector multiplication
-    Vector operator*(const Vector &vec) const
-    {
-        Vector result(mNumRows);
-        for(int i = 0; i < mNumRows; ++i) {
-            double sum = 0.0;
-            for(int j = 0; j < mNumCols; ++j) {
-                sum += mData[i][j] * vec[j];
-            }
-            result[i] = sum;
-        }
-        return result;
-    }
+int Matrix::numRows() const { return mNumRows; }
+int Matrix::numCols() const { return mNumCols; }
 
-    // Transpose
-    Matrix transpose() const
-    {
-        Matrix T(mNumCols, mNumRows);
-        for(int i = 0; i < mNumRows; ++i) {
-            for(int j = 0; j < mNumCols; ++j) {
-                T.mData[j][i] = mData[i][j];
-            }
-        }
-        return T;
+void Matrix::print() const {
+    for (int i = 0; i < mNumRows; ++i) {
+        for (int j = 0; j < mNumCols; ++j)
+            cout << mData[i][j] << " ";
+        cout << endl;
     }
+}
 
-    // Determinant using Gaussian elimination (square only)
-    double determinant() const
-    {
-        if (mNumRows != mNumCols) {
-            std::cerr << "Determinant requires a square matrix.\n";
-            std::exit(EXIT_FAILURE);
-        }
-        int n = mNumRows;
-        Matrix temp(*this);
-        double det = 1.0;
-        for(int i = 0; i < n; ++i) {
-            int pivot = i;
-            double maxAbs = std::fabs(temp.mData[i][i]);
-            for(int row = i + 1; row < n; ++row) {
-                if(std::fabs(temp.mData[row][i]) > maxAbs) {
-                    maxAbs = std::fabs(temp.mData[row][i]);
-                    pivot = row;
-                }
-            }
-            if (std::fabs(temp.mData[pivot][i]) < 1e-12) {
-                return 0.0;
-            }
-            if(pivot != i) {
-                std::swap(temp.mData[i], temp.mData[pivot]);
-                det = -det;
-            }
-            det *= temp.mData[i][i];
-            for(int row = i + 1; row < n; ++row) {
-                double factor = temp.mData[row][i] / temp.mData[i][i];
-                for(int col = i; col < n; ++col) {
-                    temp.mData[row][col] -= factor * temp.mData[i][col];
-                }
-            }
-        }
-        return det;
-    }
+double Matrix::determinant() const {
+    assert(mNumRows == mNumCols);
+    if (mNumRows == 1) return mData[0][0];
+    if (mNumRows == 2) return mData[0][0]*mData[1][1] - mData[0][1]*mData[1][0];
 
-    // Inverse using Gauss‐Jordan (square only)
-    Matrix inverse() const
-    {
-        if (mNumRows != mNumCols) {
-            std::cerr << "Inverse requires a square matrix.\n";
-            std::exit(EXIT_FAILURE);
-        }
-        int n = mNumRows;
-        Matrix aug(n, 2*n);
-        for(int i = 0; i < n; ++i) {
-            for(int j = 0; j < n; ++j) {
-                aug.mData[i][j] = mData[i][j];
-            }
-            for(int j = n; j < 2*n; ++j) {
-                aug.mData[i][j] = (j - n == i) ? 1.0 : 0.0;
+    double det = 0.0;
+    for (int k = 0; k < mNumCols; ++k) {
+        Matrix sub(mNumRows - 1, mNumCols - 1);
+        for (int i = 1; i < mNumRows; ++i) {
+            int sj = 0;
+            for (int j = 0; j < mNumCols; ++j) {
+                if (j == k) continue;
+                sub.mData[i - 1][sj++] = mData[i][j];
             }
         }
-        for(int i = 0; i < n; ++i) {
-            int pivot = i;
-            double maxAbs = std::fabs(aug.mData[i][i]);
-            for(int row = i + 1; row < n; ++row) {
-                if(std::fabs(aug.mData[row][i]) > maxAbs) {
-                    maxAbs = std::fabs(aug.mData[row][i]);
-                    pivot = row;
-                }
-            }
-            if(std::fabs(aug.mData[pivot][i]) < 1e-12) {
-                std::cerr << "Matrix is singular and cannot be inverted.\n";
-                std::exit(EXIT_FAILURE);
-            }
-            if(pivot != i) {
-                std::swap(aug.mData[i], aug.mData[pivot]);
-            }
-            double div = aug.mData[i][i];
-            for(int col = 0; col < 2*n; ++col) {
-                aug.mData[i][col] /= div;
-            }
-            for(int row = 0; row < n; ++row) {
-                if(row != i) {
-                    double factor = aug.mData[row][i];
-                    for(int col = 0; col < 2*n; ++col) {
-                        aug.mData[row][col] -= factor * aug.mData[i][col];
-                    }
-                }
-            }
-        }
-        Matrix inv(n, n);
-        for(int i = 0; i < n; ++i) {
-            for(int j = 0; j < n; ++j) {
-                inv.mData[i][j] = aug.mData[i][j + n];
-            }
-        }
-        return inv;
+        det += (k % 2 == 0 ? 1 : -1) * mData[0][k] * sub.determinant();
     }
+    return det;
+}
 
-    // Moore‐Penrose pseudoinverse (full‐rank only)
-    Matrix pseudoInverse() const
-    {
-        int m = mNumRows;
-        int n = mNumCols;
-        if(m >= n) {
-            Matrix At = this->transpose();          // n×m
-            Matrix AtA = At * (*this);               // n×n
-            double det = AtA.determinant();
-            if (std::fabs(det) < 1e-12) {
-                std::cerr << "Cannot compute pseudoinverse: A^T A is singular.\n";
-                std::exit(EXIT_FAILURE);
+Matrix Matrix::inverse() const {
+    assert(mNumRows == mNumCols);
+    int n = mNumRows;
+    Matrix A(*this);
+    Matrix I(n, n);
+    for (int i = 0; i < n; ++i) I.mData[i][i] = 1.0;
+
+    for (int i = 0; i < n; ++i) {
+        double pivot = A.mData[i][i];
+        assert(fabs(pivot) > 1e-9);
+        for (int j = 0; j < n; ++j) {
+            A.mData[i][j] /= pivot;
+            I.mData[i][j] /= pivot;
+        }
+        for (int k = 0; k < n; ++k) {
+            if (k == i) continue;
+            double factor = A.mData[k][i];
+            for (int j = 0; j < n; ++j) {
+                A.mData[k][j] -= factor * A.mData[i][j];
+                I.mData[k][j] -= factor * I.mData[i][j];
             }
-            Matrix invAtA = AtA.inverse();          // n×n
-            return invAtA * At;                     // n×m
-        } else {
-            Matrix At = this->transpose();          // n×m
-            Matrix AAt = (*this) * At;               // m×m
-            double det = AAt.determinant();
-            if (std::fabs(det) < 1e-12) {
-                std::cerr << "Cannot compute pseudoinverse: A A^T is singular.\n";
-                std::exit(EXIT_FAILURE);
-            }
-            Matrix invAAt = AAt.inverse();          // m×m
-            return At * invAAt;                     // n×m
         }
     }
-};
+    return I;
+}
+
+Matrix Matrix::pseudoInverse() const {
+    Matrix AT(mNumCols, mNumRows);
+    for (int i = 0; i < mNumRows; ++i)
+        for (int j = 0; j < mNumCols; ++j)
+            AT.mData[j][i] = mData[i][j];
+
+    Matrix ATA = AT * (*this);
+    Matrix ATA_inv = ATA.inverse();
+    return ATA_inv * AT;
+}
