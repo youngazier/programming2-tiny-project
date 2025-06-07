@@ -40,7 +40,7 @@ We used the [Computer Hardware dataset](https://archive.ics.uci.edu/dataset/29/c
 
 ### Compile & Run
 ```bash
-cd Part_B
+cd "Part B"
 g++ LinearSystem.cpp main.cpp -o main
 main.exe
 ```
